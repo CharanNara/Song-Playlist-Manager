@@ -2,7 +2,7 @@
 
 A minimal full-stack application that ingests a **column-oriented JSON playlist dataset**, normalizes it into row-based song records, stores it in **SQLite**, and exposes a **FastAPI** backend consumed by a **React (Vite)** frontend dashboard.
 
-This project implements the required features from the take-home prompt: data normalization, backend APIs (with pagination + sorting), frontend table view with pagination/sorting/search, CSV export, and star ratings. :contentReference[oaicite:1]{index=1}
+This project implements the required features from the take-home prompt: data normalization, backend APIs (with pagination + sorting), frontend table view with pagination/sorting/search, CSV export, and star ratings. 
 
 ---
 
@@ -75,7 +75,7 @@ VIVPRO_ASSIGNMENT_TAKEHOME/
 
 ## Features Implemented (Mapped to Requirements)
 
-From the take-home prompt: :contentReference[oaicite:2]{index=2}
+From the take-home prompt: 
 
 ### ✅ 1.1 Data Processing
 - Input JSON is **column-oriented** (each field is a map of `"index" -> value`)
@@ -191,4 +191,17 @@ npm run test
 - CSV export uses safe quoting to correctly handle commas, quotes, and newline characters in song titles.
 - Sorting is supported through query parameters and applied at the DB query level.
 - Rating is validated using Pydantic (0–5, UI uses 1–5).
+
+
+## BONUS GRAPHS
+1.3.8 Build a scatter chart for the songs using danceability value.
+![alt text](https://github.com/CharanNara/Song-Playlist-Manager/blob/main/backend/graphs/scatter_danceable.png)
+
+1.3.9 Build a histogram using song duration values (in seconds).
+![alt text](https://github.com/CharanNara/Song-Playlist-Manager/blob/main/backend/graphs/histogram_duration.png)
+
+1.3.10 Build bar charts for the acoustics and tempo value
+![alt text](https://github.com/CharanNara/Song-Playlist-Manager/blob/main/backend/graphs/bar_acoust_tempo.png)
+
+
 
