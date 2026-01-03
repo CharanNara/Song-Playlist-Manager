@@ -75,7 +75,6 @@ VIVPRO_ASSIGNMENT_TAKEHOME/
 
 ## Features Implemented (Mapped to Requirements)
 
-From the take-home prompt: 
 
 ### ✅ 1.1 Data Processing
 - Input JSON is **column-oriented** (each field is a map of `"index" -> value`)
