@@ -98,19 +98,17 @@ VIVPRO_ASSIGNMENT_TAKEHOME/
 
 ---
 
-## How to Run (Local)
+# How to Run (Local)
 
-### 1) Backend Setup & Run
+## 1) Backend Setup & Run
 cd backend
 
-# create venv (optional but recommended)
+### create venv (optional but recommended)
 python -m venv venv
 source venv/bin/activate   # mac/linux
-# venv\Scripts\activate    # windows
-
 pip install -r requirements.txt
 
-# run server
+### run server
 python main.py
 
 OR 
@@ -121,7 +119,7 @@ uvicorn main:app --reload --host 0.0.0.0 --port 8000
 http://localhost:8000
 
 
-### 2) Frontend Setup & Run
+## 2) Frontend Setup & Run
 cd frontend
 npm install
 npm run dev
