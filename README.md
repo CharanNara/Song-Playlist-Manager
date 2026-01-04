@@ -201,4 +201,24 @@ npm run test
 ![alt text](https://github.com/CharanNara/Song-Playlist-Manager/blob/main/backend/graphs/bar_acoust_tempo.png)
 
 
+## REFERENCES:
+
+### Backend
+1. https://docs.python.org/3/library/csv.html - (Python CSV module)
+2. https://docs.python.org/3/library/sqlite3.html - (SQLite3 Documentation)
+3. https://fastapi.tiangolo.com/tutorial/testing/#run-it - (FastAPI Testing Guide)
+4. https://docs.pytest.org/en/stable/how-to/fixtures.html - (Pytest Fixtures)
+
+### Frontend
+5. https://testing-library.com/docs/react-testing-library/example-intro/ - (React Testing Library examples)
+6. https://www.freecodecamp.org/news/formdata-explained/ - (FormData explanation)
+
+### Visualization
+7. https://matplotlib.org/stable/api/_as_gen/matplotlib.pyplot.subplots.html - (Matplotlib Subplots APIs) 
+
+### Protocols
+8. http://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Status - (HTTP Status Codes) 
+
+
+
 
