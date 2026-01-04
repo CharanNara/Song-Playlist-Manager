@@ -21,7 +21,7 @@ function App() {
   useEffect(() => {
     // Only auto-fetch paginated list when NOT in search mode
     if (!isSearching) fetchSongs();
-  }, [page, sortBy, sortOrder, isSearching]);
+  }, [page, sortBy, sortOrder, isSearching]); // 4 dependencies
 
   const fetchSongs = async () => {
     setLoading(true);
@@ -128,14 +128,24 @@ function App() {
 
   const handleExport = async () => {
     try {
-      const res = await fetch(`${API}/songs/export`);
+      // Build URL with current filters
+      let url = `${API}/songs/export?sort_by=${sortBy}&sort_order=${sortOrder}`;
+      
+      // If searching, add the search filter
+      if (isSearching && search.trim()) {
+        url += `&title=${encodeURIComponent(search.trim())}`;
+      }
+
+      const res = await fetch(url);
       const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
+      const downloadUrl = URL.createObjectURL(blob);
       const a = document.createElement('a');
-      a.href = url;
-      a.download = 'songs.csv';
+      a.href = downloadUrl;
+      a.download = isSearching ? `songs_filtered.csv` : 'songs.csv';
       a.click();
-      URL.revokeObjectURL(url);
+      URL.revokeObjectURL(downloadUrl);
+
+      setMessage(isSearching ? `Exported ${songs.length} filtered song(s)` : 'Exported all songs');
     } catch (err) {
       setMessage('Export error');
     }
