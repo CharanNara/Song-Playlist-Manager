@@ -14,14 +14,12 @@ function App() {
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
-
-  // NEW: track whether we are showing search results or full paginated list
   const [isSearching, setIsSearching] = useState(false);
+  const [showCharts, setShowCharts] = useState(false);
 
   useEffect(() => {
-    // Only auto-fetch paginated list when NOT in search mode
     if (!isSearching) fetchSongs();
-  }, [page, sortBy, sortOrder, isSearching]); // 4 dependencies
+  }, [page, sortBy, sortOrder, isSearching]);
 
   const fetchSongs = async () => {
     setLoading(true);
@@ -54,8 +52,6 @@ function App() {
       const data = await res.json();
 
       setMessage(`Loaded ${data.songs_loaded} songs`);
-
-      // After upload, exit search mode and refresh list
       setIsSearching(false);
       setSearch('');
       setPage(1);
@@ -67,8 +63,6 @@ function App() {
   };
 
   const handleSort = (col) => {
-    // If searching, ignore sorting (optional choice for MVP)
-    // You can also choose to allow client-side sorting during search.
     if (isSearching) return;
 
     if (sortBy === col) {
@@ -85,17 +79,15 @@ function App() {
 
     setLoading(true);
     try {
-      // Ask backend for up to 100 matches (bounded)
       const res = await fetch(`${API}/songs/search?title=${encodeURIComponent(search)}&limit=100`);
       const data = await res.json();
 
       setIsSearching(true);
-      setPage(1); // freeze UI at page 1 for search mode
+      setPage(1);
 
       const foundSongs = data.songs || [];
       setSongs(foundSongs);
 
-      // Freeze pagination numbers to reflect current view
       setTotal(data.count || foundSongs.length);
       setTotalPages(1);
 
@@ -128,10 +120,8 @@ function App() {
 
   const handleExport = async () => {
     try {
-      // Build URL with current filters
       let url = `${API}/songs/export?sort_by=${sortBy}&sort_order=${sortOrder}`;
       
-      // If searching, add the search filter
       if (isSearching && search.trim()) {
         url += `&title=${encodeURIComponent(search.trim())}`;
       }
@@ -149,6 +139,15 @@ function App() {
     } catch (err) {
       setMessage('Export error');
     }
+  };
+
+  const toggleCharts = () => {
+    setShowCharts(!showCharts);
+  };
+
+  const SortIcon = ({ column }) => {
+    if (sortBy !== column || isSearching) return null;
+    return sortOrder === 'asc' ? ' ↑' : ' ↓';
   };
 
   return (
@@ -169,60 +168,117 @@ function App() {
           <button onClick={handleClear}>Clear</button>
         </div>
 
-        <button onClick={handleExport}>Download CSV</button>
+        <button onClick={toggleCharts}>
+          {showCharts ? 'Hide Charts' : 'Show Charts'}
+        </button>
+
+        <button onClick={handleExport}>
+          Download CSV {isSearching && '(filtered)'}
+        </button>
       </div>
 
       {message && <div className="message">{message}</div>}
+
+      {showCharts && (
+        <div className="charts-container">
+          <h2>📊 Advanced Analytics (Matplotlib Charts)</h2>
+          
+          <div className="matplotlib-charts">
+            <div className="chart-image">
+              <h3>Danceability Scatter Plot</h3>
+              <img 
+                src={`${API}/charts/danceability-scatter`} 
+                alt="Danceability Scatter Plot"
+                onError={(e) => e.target.style.display = 'none'}
+              />
+            </div>
+
+            <div className="chart-image">
+              <h3>Song Duration Histogram</h3>
+              <img 
+                src={`${API}/charts/duration-histogram`} 
+                alt="Duration Histogram"
+                onError={(e) => e.target.style.display = 'none'}
+              />
+            </div>
+
+            <div className="chart-image">
+              <h3>Average Acousticness vs Tempo</h3>
+              <img 
+                src={`${API}/charts/acousticness-tempo-bar`} 
+                alt="Acousticness vs Tempo"
+                onError={(e) => e.target.style.display = 'none'}
+              />
+            </div>
+          </div>
+        </div>
+      )}
 
       {loading ? (
         <div>Loading...</div>
       ) : (
         <>
-          <table>
-            <thead>
-              <tr>
-                <th onClick={() => handleSort('title')}>
-                  Title {sortBy === 'title' && !isSearching && (sortOrder === 'asc' ? '↑' : '↓')}
-                </th>
-                <th onClick={() => handleSort('danceability')}>
-                  Dance {sortBy === 'danceability' && !isSearching && (sortOrder === 'asc' ? '↑' : '↓')}
-                </th>
-                <th onClick={() => handleSort('energy')}>
-                  Energy {sortBy === 'energy' && !isSearching && (sortOrder === 'asc' ? '↑' : '↓')}
-                </th>
-                <th onClick={() => handleSort('tempo')}>
-                  Tempo {sortBy === 'tempo' && !isSearching && (sortOrder === 'asc' ? '↑' : '↓')}
-                </th>
-                <th onClick={() => handleSort('duration_ms')}>
-                  Duration {sortBy === 'duration_ms' && !isSearching && (sortOrder === 'asc' ? '↑' : '↓')}
-                </th>
-                <th>Rating</th>
-              </tr>
-            </thead>
-
-            <tbody>
-              {songs.map((s) => (
-                <tr key={s.id}>
-                  <td>{s.title}</td>
-                  <td>{s.danceability?.toFixed(3)}</td>
-                  <td>{s.energy?.toFixed(3)}</td>
-                  <td>{s.tempo?.toFixed(2)}</td>
-                  <td>{s.duration_ms}</td>
-                  <td>
-                    {[1, 2, 3, 4, 5].map((star) => (
-                      <span
-                        key={star}
-                        className={star <= (s.rating || 0) ? 'star filled' : 'star'}
-                        onClick={() => handleRate(s.id, star)}
-                      >
-                        ★
-                      </span>
-                    ))}
-                  </td>
+          <div style={{ overflowX: 'auto' }}>
+            <table>
+              <thead>
+                <tr>
+                  <th onClick={() => handleSort('title')}>Title<SortIcon column="title" /></th>
+                  <th onClick={() => handleSort('danceability')}>Dance<SortIcon column="danceability" /></th>
+                  <th onClick={() => handleSort('energy')}>Energy<SortIcon column="energy" /></th>
+                  <th onClick={() => handleSort('key')}>Key<SortIcon column="key" /></th>
+                  <th onClick={() => handleSort('loudness')}>Loudness<SortIcon column="loudness" /></th>
+                  <th onClick={() => handleSort('mode')}>Mode<SortIcon column="mode" /></th>
+                  <th onClick={() => handleSort('acousticness')}>Acoustic<SortIcon column="acousticness" /></th>
+                  <th onClick={() => handleSort('instrumentalness')}>Instrumental<SortIcon column="instrumentalness" /></th>
+                  <th onClick={() => handleSort('liveness')}>Liveness<SortIcon column="liveness" /></th>
+                  <th onClick={() => handleSort('valence')}>Valence<SortIcon column="valence" /></th>
+                  <th onClick={() => handleSort('tempo')}>Tempo<SortIcon column="tempo" /></th>
+                  <th onClick={() => handleSort('duration_ms')}>Duration (ms)<SortIcon column="duration_ms" /></th>
+                  <th onClick={() => handleSort('time_signature')}>Time Sig<SortIcon column="time_signature" /></th>
+                  <th onClick={() => handleSort('num_bars')}>Bars<SortIcon column="num_bars" /></th>
+                  <th onClick={() => handleSort('num_sections')}>Sections<SortIcon column="num_sections" /></th>
+                  <th onClick={() => handleSort('num_segments')}>Segments<SortIcon column="num_segments" /></th>
+                  <th onClick={() => handleSort('class')}>Class<SortIcon column="class" /></th>
+                  <th>Rating</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+
+              <tbody>
+                {songs.map((s) => (
+                  <tr key={s.id}>
+                    <td>{s.title}</td>
+                    <td>{s.danceability?.toFixed(3)}</td>
+                    <td>{s.energy?.toFixed(3)}</td>
+                    <td>{s.key}</td>
+                    <td>{s.loudness?.toFixed(2)}</td>
+                    <td>{s.mode}</td>
+                    <td>{s.acousticness?.toFixed(3)}</td>
+                    <td>{s.instrumentalness?.toFixed(3)}</td>
+                    <td>{s.liveness?.toFixed(3)}</td>
+                    <td>{s.valence?.toFixed(3)}</td>
+                    <td>{s.tempo?.toFixed(2)}</td>
+                    <td>{s.duration_ms}</td>
+                    <td>{s.time_signature}</td>
+                    <td>{s.num_bars}</td>
+                    <td>{s.num_sections}</td>
+                    <td>{s.num_segments}</td>
+                    <td>{s.class}</td>
+                    <td>
+                      {[1, 2, 3, 4, 5].map((star) => (
+                        <span
+                          key={star}
+                          className={star <= (s.rating || 0) ? 'star filled' : 'star'}
+                          onClick={() => handleRate(s.id, star)}
+                        >
+                          ★
+                        </span>
+                      ))}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
 
           <div className="pagination">
             <button

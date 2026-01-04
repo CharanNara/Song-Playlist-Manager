@@ -7,6 +7,9 @@ import json
 import csv
 import io
 import math
+import matplotlib
+matplotlib.use('Agg')  # Use non-GUI backend
+import matplotlib.pyplot as plt
 
 app = FastAPI()
 
@@ -19,8 +22,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-
 
 # Database setup
 def get_db():
@@ -85,9 +86,7 @@ async def load_data(file: UploadFile = File(...)):
             title_val = data.get('title', {}).get(str(i))
             if title_val is None:
                 title_val = f"Untitled {i}"
-            # Convert to string and handle special characters
             title_str = str(title_val)
-            # Replace multiple whitespace/newlines with single space
             title_str = ' '.join(title_str.split())
             record.append(title_str)
             
@@ -178,9 +177,9 @@ def get_songs(
 @app.get("/api/songs/search")
 def search_song(
     title: str = Query(..., min_length=1),
-    limit: int = Query(10, ge=1, le=100) # here 10 means default value for limit is 10 
+    limit: int = Query(10, ge=1, le=100)
 ):
-    conn = get_db()  # must have row_factory = sqlite3.Row
+    conn = get_db()
     pattern = f"%{title.strip().lower()}%"
 
     rows = conn.execute(
@@ -196,7 +195,6 @@ def search_song(
 
     conn.close()
 
-    # rows is a list of sqlite3.Row objects -> dict(row) works
     songs = [dict(r) for r in rows]
 
     return {"count": len(songs), "songs": songs}
@@ -258,6 +256,122 @@ def export_csv(
         media_type="text/csv",
         headers={"Content-Disposition": "attachment; filename=songs.csv"}
     )
+
+# Chart Endpoints
+@app.get("/api/charts/danceability-scatter")
+def chart_danceability_scatter():
+    """Generate scatter plot of danceability vs song index"""
+    try:
+        conn = get_db()
+        rows = conn.execute('SELECT danceability FROM songs ORDER BY id').fetchall()
+        conn.close()
+        
+        if not rows:
+            raise HTTPException(status_code=404, detail="No songs found")
+        
+        danceability = [row['danceability'] for row in rows]
+        
+        # Clear any existing plots
+        # plt.clf()
+        # plt.close('all')
+        
+        fig, ax = plt.subplots(figsize=(10, 6))
+        ax.scatter(range(len(danceability)), danceability, alpha=0.6, c='#667eea', s=30)
+        ax.set_xlabel('Song Index', fontsize=12)
+        ax.set_ylabel('Danceability', fontsize=12)
+        ax.set_title('Danceability Scatter Plot', fontsize=14, fontweight='bold')
+        ax.grid(True, alpha=0.3)
+        plt.tight_layout()
+        
+        # Save to bytes
+        buf = io.BytesIO()
+        fig.savefig(buf, format='png', dpi=100, bbox_inches='tight')
+        buf.seek(0)
+        plt.close(fig)
+        
+        return StreamingResponse(buf, media_type="image/png")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/charts/duration-histogram")
+def chart_duration_histogram():
+    """Generate histogram of song durations"""
+    try:
+        conn = get_db()
+        rows = conn.execute('SELECT duration_ms FROM songs WHERE duration_ms > 0').fetchall()
+        conn.close()
+        
+        if not rows:
+            raise HTTPException(status_code=404, detail="No songs found")
+        
+        durations_sec = [row['duration_ms'] / 1000 for row in rows]
+        
+        # Clear any existing plots
+        # plt.clf()
+        # plt.close('all')
+        
+        fig, ax = plt.subplots(figsize=(10, 6))
+        ax.hist(durations_sec, bins=20, color='#764ba2', alpha=0.7, edgecolor='black')
+        ax.set_xlabel('Duration (seconds)', fontsize=12)
+        ax.set_ylabel('Number of Songs', fontsize=12)
+        ax.set_title('Song Duration Histogram', fontsize=14, fontweight='bold')
+        ax.grid(True, alpha=0.3, axis='y')
+        plt.tight_layout()
+        
+        buf = io.BytesIO()
+        fig.savefig(buf, format='png', dpi=100, bbox_inches='tight')
+        buf.seek(0)
+        plt.close(fig)
+        
+        return StreamingResponse(buf, media_type="image/png")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/charts/acousticness-tempo-bar")
+def chart_acousticness_tempo_bar():
+    """Generate bar chart of average acousticness and tempo"""
+    try:
+        conn = get_db()
+        rows = conn.execute('SELECT acousticness, tempo FROM songs').fetchall()
+        conn.close()
+        
+        if not rows:
+            raise HTTPException(status_code=404, detail="No songs found")
+        
+        acousticness = [row['acousticness'] for row in rows]
+        tempo = [row['tempo'] for row in rows]
+        
+        avg_acousticness = sum(acousticness) / len(acousticness)
+        avg_tempo = sum(tempo) / len(tempo)
+        
+        # Clear any existing plots
+        # plt.clf()
+        # plt.close('all')
+        
+        fig, ax = plt.subplots(figsize=(8, 6))
+        bars = ax.bar(['Acousticness', 'Tempo'], [avg_acousticness, avg_tempo], 
+                      color=['#4facfe', '#f093fb'], alpha=0.8, edgecolor='black')
+        ax.set_ylabel('Average Value', fontsize=12)
+        ax.set_title('Average Acousticness vs Tempo', fontsize=14, fontweight='bold')
+        ax.grid(True, alpha=0.3, axis='y')
+        
+        # Add value labels on bars
+        for bar in bars:
+            height = bar.get_height()
+            ax.text(bar.get_x() + bar.get_width()/2., height,
+                    f'{height:.2f}',
+                    ha='center', va='bottom', fontsize=11, fontweight='bold')
+        
+        plt.tight_layout()
+        
+        buf = io.BytesIO()
+        fig.savefig(buf, format='png', dpi=100, bbox_inches='tight')
+        buf.seek(0)
+        plt.close(fig)
+        
+        return StreamingResponse(buf, media_type="image/png")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 if __name__ == "__main__":
     import uvicorn
