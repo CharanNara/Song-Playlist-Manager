@@ -10,10 +10,11 @@ import math
 
 app = FastAPI()
 
+origin = ["http://localhost:5174", "http://localhost:5173"]
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=origin,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -177,7 +178,7 @@ def get_songs(
 @app.get("/api/songs/search")
 def search_song(
     title: str = Query(..., min_length=1),
-    limit: int = Query(10, ge=1, le=100)
+    limit: int = Query(10, ge=1, le=100) # here 10 means default value for limit is 10 
 ):
     conn = get_db()  # must have row_factory = sqlite3.Row
     pattern = f"%{title.strip().lower()}%"
@@ -214,9 +215,28 @@ def update_rating(song_id: str, request: UpdateRating):
     raise HTTPException(status_code=404, detail="Song not found")
 
 @app.get("/api/songs/export")
-def export_csv():
+def export_csv(
+    title: str = Query(None),
+    sort_by: str = Query("title"),
+    sort_order: str = Query("asc")
+):
+    if sort_by not in ALLOWED_SORT_COLUMNS:
+        raise HTTPException(status_code=400, detail="Invalid sort_by column")
+
+    if sort_order not in {"asc", "desc"}:
+        raise HTTPException(status_code=400, detail="Invalid sort_order")
+    
     conn = get_db()
-    rows = conn.execute('SELECT * FROM songs ORDER BY title').fetchall()
+    
+    # Build query based on whether we have a search filter
+    if title and title.strip():
+        pattern = f"%{title.strip().lower()}%"
+        query = f'SELECT * FROM songs WHERE LOWER(title) LIKE ? ORDER BY {sort_by} {sort_order.upper()}'
+        rows = conn.execute(query, (pattern,)).fetchall()
+    else:
+        query = f'SELECT * FROM songs ORDER BY {sort_by} {sort_order.upper()}'
+        rows = conn.execute(query).fetchall()
+    
     songs = [dict(row) for row in rows]
     conn.close()
     
@@ -224,12 +244,11 @@ def export_csv():
         raise HTTPException(status_code=404, detail="No songs to export")
     
     output = io.StringIO()
-    # Use QUOTE_NONNUMERIC to properly escape strings with commas, quotes, newlines
     writer = csv.DictWriter(
         output, 
         fieldnames=songs[0].keys(), 
         lineterminator='\n',
-        quoting=csv.QUOTE_NONNUMERIC  # This handles all special characters
+        quoting=csv.QUOTE_NONNUMERIC
     )
     writer.writeheader()
     writer.writerows(songs)
